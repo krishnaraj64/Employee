@@ -1,5 +1,6 @@
 package com.example.EmpApp.Security;
 
+import com.example.EmpApp.Entity.Employee;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,6 +8,8 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtUtil {
@@ -20,17 +23,22 @@ public class JwtUtil {
         this.signingKey = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateAccessToken(String username) {
-        return generateToken(username, accessTokenValidity);
+    // ✅ Generates access token with custom claims
+    public String generateAccessToken(Employee employee) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("empId", employee.getEmpId());
+        claims.put("empName", employee.getEmpName());
+        return generateToken(claims, employee.getEmail(), accessTokenValidity);
     }
 
-    public String generateRefreshToken(String username) {
-        return generateToken(username, refreshTokenValidity);
+    public String generateRefreshToken(Employee employee) {
+        return generateToken(new HashMap<>(), employee.getEmail(), refreshTokenValidity);
     }
 
-    private String generateToken(String username, long duration) {
+    private String generateToken(Map<String, Object> claims, String subject, long duration) {
         return Jwts.builder()
-                .setSubject(username)
+                .setClaims(claims)
+                .setSubject(subject) // email
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + duration))
                 .signWith(signingKey, SignatureAlgorithm.HS512)
@@ -50,7 +58,7 @@ public class JwtUtil {
         }
     }
 
-    private Claims getClaims(String token) {
+    public Claims getClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(signingKey)
                 .build()
